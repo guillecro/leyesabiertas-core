@@ -45,6 +45,10 @@ router.route('/')
           limit: req.query.limit,
           page: req.query.page
         })
+        let today = new Date()
+        results.docs.forEach((doc) => {
+          doc.closed = today > new Date(doc.currentVersion.content.closingDate)
+        })
         res.status(status.OK).json({
           results: results.docs,
           pagination: {
@@ -145,6 +149,7 @@ router.route('/:id')
         if (!document) throw errors.ErrNotFound('Document not found or doesn\'t exist')
         // Check if the user is the author
         const isTheAuthor = req.session.user ? req.session.user._id.equals(document.author._id) : false
+        const isClosed = new Date() > new Date(document.currentVersion.content.closingDate)
         // Check if it is published or not (draft)
         if (!document.published) {
           // It's a draft, check if the author is the user who requested it.
@@ -153,12 +158,13 @@ router.route('/:id')
             throw errors.ErrForbidden
           }
         }
+        document.closed = isClosed
         let payload = {
           document: document,
           isAuthor: isTheAuthor
         }
         // If the document is closed
-        if (document.closed) {
+        if (isClosed) {
           const contributionsData = await DocumentVersion.countContributions({ document: req.params.id })
           const contextualCommentsCount = await Comment.count({ document: req.params.id, decoration: { $ne: null } })
           payload.contributionsCount = contributionsData.contributionsCount
