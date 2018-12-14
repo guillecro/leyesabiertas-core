@@ -4,29 +4,32 @@ const log = require('./logger')
 
 const http = axios.create()
 
-exports.sendCommentNotification = async ({ type, comment, participant, accountable, title }) => {
+exports.sendCommentNotification = async (notificationType, commentId) => {
   let payload = {
-    'type': type,
-    'info': {
-      'to': participant.email,
-      'document': {
-        'title': title,
-        'participant': participant,
-        'accountable': accountable,
-        'comment': comment
-      }
-    }
+    type: notificationType,
+    comment: commentId
   }
-  http.post(NOTIFIER_URL, payload).then((response) => {
-    log.info(response.data.message, {
-      type: type,
-      to: participant.email
-    })
+  http.post(`${NOTIFIER_URL}/send-email`, payload).then((response) => {
+    log.info(response.data.message, payload)
   }).catch((error) => {
     log.error('ERROR Sending Email', {
-      type: type,
-      to: participant.email,
-      meta: error.message
+      meta: payload,
+      message: error.message
+    })
+  })
+}
+
+exports.setDocumentClosesNotification = async (documentId, closingDate) => {
+  let payload = {
+    id: documentId,
+    closingDate
+  }
+  http.post(`${NOTIFIER_URL}/set-document-closes`, payload).then((response) => {
+    log.info(response.data.message, payload)
+  }).catch((error) => {
+    log.error('ERROR Setting document closes event', {
+      error: error.message,
+      meta: payload
     })
   })
 }
