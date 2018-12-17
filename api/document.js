@@ -45,6 +45,10 @@ router.route('/')
           limit: req.query.limit,
           page: req.query.page
         })
+        let today = new Date()
+        results.docs.forEach((doc) => {
+          doc.closed = today > new Date(doc.currentVersion.content.closingDate)
+        })
         res.status(status.OK).json({
           results: results.docs,
           pagination: {
@@ -82,6 +86,9 @@ router.route('/')
           throw errors.ErrBadRequest('customForm')
         }
         const newDocument = await Document.create(req.body, customForm)
+        // Set closing notification agenda
+        notifier.setDocumentClosesNotification(newDocument._id, req.body.content.closingDate)
+        // Send
         res.status(status.CREATED).send(newDocument)
       } catch (err) {
         next(err)
@@ -145,6 +152,7 @@ router.route('/:id')
         if (!document) throw errors.ErrNotFound('Document not found or doesn\'t exist')
         // Check if the user is the author
         const isTheAuthor = req.session.user ? req.session.user._id.equals(document.author._id) : false
+        const isClosed = new Date() > new Date(document.currentVersion.content.closingDate)
         // Check if it is published or not (draft)
         if (!document.published) {
           // It's a draft, check if the author is the user who requested it.
@@ -153,12 +161,13 @@ router.route('/:id')
             throw errors.ErrForbidden
           }
         }
+        document.closed = isClosed
         let payload = {
           document: document,
           isAuthor: isTheAuthor
         }
         // If the document is closed
-        if (document.closed) {
+        if (isClosed) {
           const contributionsData = await DocumentVersion.countContributions({ document: req.params.id })
           const contextualCommentsCount = await Comment.count({ document: req.params.id, decoration: { $ne: null } })
           payload.contributionsCount = contributionsData.contributionsCount
@@ -226,21 +235,7 @@ router.route('/:id')
           const comments = await Comment.getAll(query, true)
           // Send email
           comments.forEach((comment) => {
-            notifier.sendCommentNotification({
-              type: 'comment-contribution',
-              comment: comment.content,
-              title: document.currentVersion.content.title,
-              participant: {
-                email: comment.user.email,
-                fullname: comment.user.fullname,
-                avatar: comment.user.avatar,
-                occupation: comment.user.fields.occupation
-              },
-              accountable: {
-                gender: document.author.fields.gender,
-                fullname: document.author.fullname
-              }
-            })
+            notifier.sendCommentNotification('comment-contribution', comment._id)
           })
         } else {
           // Update the version document
@@ -248,76 +243,15 @@ router.route('/:id')
         }
         // Update the document, with the correct customForm
         const updatedDocument = await Document.update(req.params.id, newDataDocument)
+        // Set document closes event
+        if (req.body.content && req.body.content.closingDate) {
+          notifier.setDocumentClosesNotification(updatedDocument, req.body.content.closingDate)
+        }
         res.status(status.OK).json(updatedDocument)
       } catch (err) {
         next(err)
       }
     })
-
-// router.route('/:id/update/:field')
-/**
-     * @api {put} /documents/:idDocument/update/:field Updates the content a field of a document
-     * @apiName updateDocumentField
-     * @apiGroup Comments
-     * @apiDescription Note: This is only intended when updating a state of a field after a comment was created and added to the text's state.
-     *
-     * The following should throw an error:
-     *
-     * - The <code>:field</code> is not part of the content of the document.
-     * - The <code>:field</code> is not commentable.
-     * - The text is being changed.
-     * - More than one mark is being added to the state.
-     * - The one and only mark (the modification) needs to be a comment.
-     *
-     * Please note that any logged user can modify a field but knowing that this is for comments, the validators are used so you cannot mess around with this.
-     *
-     * @apiPermission authenticated
-     * @apiParam {string} content (Body) The state of the text editor
-     */
-// .put(
-//   middlewares.checkId,
-//   auth.keycloak.protect(),
-//   async (req, res, next) => {
-//     try {
-//       // Get the document
-//       const document = await Document.get({ _id: req.params.id })
-//       const customForm = await CustomForm.get({ _id: document.customForm })
-//       // Check if the field is part of the document
-//       if (!Object.keys(customForm.fields).indexOf(req.params.field)) {
-//         throw errors.ErrBadRequest(`The field ${req.params.field} doesn't belong to the schema`)
-//       }
-//       if (!customForm.fields.allowComments.indexOf(req.params.field)) {
-//         // If the field is not inside the "allowComments" array, throw an error
-//         throw errors.ErrBadRequest(`The field ${req.params.field} is not commentable`)
-//       }
-//       // Create a new hash of the document, that will be used to check the text consistency
-//       let hashTextSaved = utils.hashDocumentText(document.currentVersion.content[req.params.field])
-//       let hashTextState = utils.hashDocumentText(req.body)
-//       if (hashTextSaved !== hashTextState) {
-//         // If the text of the field is being changed, throw an error
-//         throw errors.ErrBadRequest(`The content of the field is being changed`)
-//       }
-//       // We need to check if the change is indeed a commentary
-//       // First we get an object with the Diff
-//       let fieldChanges = utils.getJsonDiffs(req.body, document.currentVersion.content[req.params.field])
-//       // Now we get *ALL* the changes
-//       let theChanges = utils.getObjects(fieldChanges, 'type', '')
-//       // There has to be only one change, and it should be the comments
-//       if (theChanges.length !== 1) {
-//         throw errors.ErrBadRequest(`None or more than one mark has been added to the text`, { changes: theChanges })
-//       }
-//       // And now, the only change allowed should be a mark of type "comment"
-//       if (theChanges[0].type !== 'comment') {
-//         throw errors.ErrBadRequest(`You can only comment on a text.`)
-//       }
-//       // If everythig is ok...
-//       // Update the field
-//       const updatedDocument = await DocumentVersion.updateField(document.currentVersion._id, req.params.field, req.body, customForm)
-//       res.status(status.OK).json(updatedDocument)
-//     } catch (err) {
-//       next(err)
-//     }
-//   })
 
 router.route('/:id/comments')
   /**
@@ -379,7 +313,6 @@ router.route('/:id/comments')
             }
           )(comments)
         }
-
         return res.status(status.OK).json(comments)
       } catch (err) {
         next(err)
@@ -464,29 +397,15 @@ router.route('/:id/comments/:idComment/resolve')
     auth.keycloak.protect('realm:accountable'),
     async (req, res, next) => {
       try {
+        const { idComment } = req.params
         const document = await Document.get({ _id: req.params.id })
-        const theComment = await Comment.get({ _id: req.params.idComment }, true)
         // Check if the user is the author of the document
         if (!req.session.user._id.equals(document.author._id)) {
           throw errors.ErrForbidden // User is not the author
         }
         // Update the comment
         const commentResolved = await Comment.resolve({ _id: req.params.idComment })
-        notifier.sendCommentNotification({
-          type: 'comment-resolved',
-          comment: theComment.content,
-          title: document.currentVersion.content.title,
-          participant: {
-            email: theComment.user.email,
-            fullname: theComment.user.fullname,
-            avatar: theComment.user.avatar,
-            occupation: theComment.user.fields.occupation
-          },
-          accountable: {
-            gender: document.author.fields.gender,
-            fullname: document.author.fullname
-          }
-        })
+        notifier.sendCommentNotification('comment-resolved', idComment)
         res.status(status.OK).json(commentResolved)
       } catch (err) {
         next(err)
@@ -523,23 +442,7 @@ router.route('/:id/comments/:idComment/like')
             comment: idComment
           })
           if (isTheAuthor) {
-            const document = await Document.get({ _id: req.params.id })
-            const theComment = await Comment.get({ _id: req.params.idComment }, true)
-            notifier.sendCommentNotification({
-              type: 'comment-liked',
-              comment: theComment.content,
-              title: document.currentVersion.content.title,
-              participant: {
-                email: theComment.user.email,
-                fullname: theComment.user.fullname,
-                avatar: theComment.user.avatar,
-                occupation: theComment.user.fields.occupation
-              },
-              accountable: {
-                gender: document.author.fields.gender,
-                fullname: document.author.fullname
-              }
-            })
+            notifier.sendCommentNotification('comment-liked', idComment)
           }
           res.json(createdLike)
         } else {

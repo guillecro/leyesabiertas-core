@@ -49,7 +49,7 @@ exports.create = async function create (documentData, customForm) {
 
 // Get document (with its last version)
 exports.get = async function get (query) {
-  let document = await Document.findOne(query).populate({ path: 'author', select: dbUser.exposeAll(false) }).populate('currentVersion')
+  let document = await Document.findOne(query).populate({ path: 'author', select: dbUser.exposeAll(false) }).populate('currentVersion').lean()
   return document
 }
 

@@ -50,7 +50,8 @@ exports.reply = function reply (query, reply) {
 exports.updateDecorations = async function updateDecorations (version, decorations) {
   let query = {
     version: version,
-    resolved: false
+    resolved: false,
+    field: 'articles'
   }
   let decorationsMap = {}
   decorations.forEach((deco) => {
