@@ -222,7 +222,7 @@ router.route('/:id')
             contributions: req.body.contributions
           }
           // Create the new version
-          const versionCreated = await DocumentVersion.create(newVersionData, customForm)
+          const versionCreated = await DocumentVersion.create(document.currentVersion._id, newVersionData, customForm)
           // Set the lastVersion recently created
           newDataDocument.currentVersion = versionCreated._id
           // Get the users that contributed

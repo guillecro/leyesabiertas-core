@@ -27,20 +27,27 @@ exports.update = async function update (id, content, customForm) {
     })
 }
 
-exports.create = async function create (documentData, customForm) {
-  validator.isDataValid(
-    customForm.fields,
-    documentData.content
-  )
+exports.create = async function create (prevVersionId, documentData, customForm) {
+  return DocumentVersion.findOne({ _id: prevVersionId })
+    .then((prevVersion) => {
+      if (!prevVersion) throw errors.ErrNotFound('Version document to update not found')
+      // Merge content into version
+      documentData.content = Object.assign(prevVersion.content, documentData.content)
 
-  const versionToSave = {
-    document: documentData.document,
-    version: documentData.version,
-    content: documentData.content,
-    contributions: documentData.contributions
-  }
+      validator.isDataValid(
+        customForm.fields,
+        documentData.content
+      )
 
-  return (new DocumentVersion(versionToSave)).save()
+      const versionToSave = {
+        document: documentData.document,
+        version: documentData.version,
+        content: documentData.content,
+        contributions: documentData.contributions
+      }
+
+      return (new DocumentVersion(versionToSave)).save()
+    })
 }
 
 // Update document
