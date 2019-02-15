@@ -245,7 +245,7 @@ router.route('/:id')
         const updatedDocument = await Document.update(req.params.id, newDataDocument)
         // Set document closes event
         if (req.body.content && req.body.content.closingDate) {
-          notifier.setDocumentClosesNotification(updatedDocument, req.body.content.closingDate)
+          notifier.setDocumentClosesNotification(updatedDocument.id, req.body.content.closingDate)
         }
         res.status(status.OK).json(updatedDocument)
       } catch (err) {

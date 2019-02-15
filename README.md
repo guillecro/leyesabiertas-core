@@ -1,8 +1,42 @@
-# Backend v3
+# Leyes abiertas - API Backend 
 
-Backend for DemocracyOS v3
+**Release 1.1.1**
 
-### Features
+Recommended versions
+
+- leyesabiertas-notifier - 1.1.2
+- leyesabiertas-web - 1.0.6
+- leyesabiertas-keycloak - latest
+
+## Enviroment vars
+
+```yaml
+# App vars
+PORT=3000
+SESSION_SECRET=changeMe
+
+# Database vars
+MONGO_URL=mongodb://localhost/changeMe
+
+# Keycloak 
+AUTH_REALM=changeMe
+AUTH_SERVER_URL=changeMe
+AUTH_CLIENT=changeMe
+# For test env only
+#AUTH_ADMIN_TEST_USERNAME=changeMe
+#AUTH_ADMIN_TEST_PASSWORD=changeMe
+
+# Notifier
+NOTIFIER_URL=http://place-notifier-url
+
+
+# (Optional) Community defaults
+#COMMUNITY_NAME=changeMe
+#COMMUNITY_COLOR_HEX=3177cc
+
+```
+
+<!-- ### Features
 - ExpressJS
 - Pagination (Powered by [express-paginate](https://github.com/expressjs/express-paginate))
 - [helmet](https://github.com/helmetjs/helmet) ready (Middleware - Adds security headers)
@@ -165,4 +199,4 @@ npm run admin:build
 This will be the build that will be served by the server on `/docs`
 ```
 npm run docs:build
-```
+``` -->
