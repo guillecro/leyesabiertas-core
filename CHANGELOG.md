@@ -1,5 +1,9 @@
 # Changelog
 
+**1.1.3**
+
+- Fixed contributors count at the end of a project
+
 **1.1.2**
 
 - Fixed not being able to create new document versions
