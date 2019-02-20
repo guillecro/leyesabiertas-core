@@ -4,6 +4,7 @@ const { union } = require('lodash/array')
 const DocumentVersion = require('../models/documentVersion')
 const validator = require('../services/jsonSchemaValidator')
 const errors = require('../services/errors')
+const Comment = require('./comment')
 
 exports.get = function get (query) {
   return DocumentVersion.findOne(query)
@@ -75,6 +76,7 @@ exports.updateField = async function updateField (id, field, content, customForm
 exports.countContributions = async function countContributions (query) {
   // First, find if the document exists
   let count = 0
+  let contributions = []
   let contributors = []
   return DocumentVersion.find(query)
     .then(async (versions) => {
@@ -82,8 +84,15 @@ exports.countContributions = async function countContributions (query) {
       if (!versions) throw errors.ErrNotFound('Error retrieving versions')
       // Do stuff
       await Promise.all(versions.map(async (v) => {
-        contributors = union(contributors, v.contributions)
+        contributions = union(contributions, v.contributions)
         count += v.contributions.length
+        let comments = await Comment.getAll({ _id: { $in: v.contributions } })
+        let contributorsId = comments.map((c) => {
+          return c.user.id
+        })
+        contributors = union(contributors, contributorsId)
+        console.log('========================================================')
+        console.log(contributors)
       }))
       return {
         contributionsCount: count,
