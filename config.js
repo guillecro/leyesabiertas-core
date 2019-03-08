@@ -27,8 +27,7 @@ const CONFIG = {
     'ssl-required': 'external',
     'resource': process.env.AUTH_CLIENT,
     'bearer-only': true,
-    'use-resource-role-mappings': true,
-    'confidential-port': 0
+    'use-resource-role-mappings': true
   },
 
   KEYCLOAK_TOKEN_ENDPOINT: process.env.AUTH_SERVER_URL + '/realms/' + process.env.AUTH_REALM + '/protocol/openid-connect/token',
