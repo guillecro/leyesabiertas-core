@@ -26,7 +26,10 @@ module.exports = (async () => {
       secret: config.SESSION_SECRET,
       resave: false,
       saveUninitialized: true,
-      store: mongoStore
+      store: mongoStore,
+      cookie: {
+        secure: true
+      }
     }))
     server.use(keycloak.middleware())
     // Apply API routes
