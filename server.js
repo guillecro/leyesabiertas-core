@@ -29,9 +29,6 @@ module.exports = (async () => {
       resave: false,
       saveUninitialized: true,
       store: mongoStore,
-      cookie: {
-        secure: true
-      }
     }))
     server.use(keycloak.middleware())
     // Apply API routes
