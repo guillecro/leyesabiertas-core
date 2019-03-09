@@ -23,11 +23,11 @@ const CONFIG = {
 
   KEYCLOAK_CONFIG: {
     'realm': process.env.AUTH_REALM,
+    'bearer-only': true,
     'auth-server-url': process.env.AUTH_SERVER_URL,
     'ssl-required': 'external',
     'resource': process.env.AUTH_CLIENT,
-    'bearer-only': true,
-    'use-resource-role-mappings': true
+    'confidentia-port': 0
   },
 
   KEYCLOAK_TOKEN_ENDPOINT: process.env.AUTH_SERVER_URL + '/realms/' + process.env.AUTH_REALM + '/protocol/openid-connect/token',

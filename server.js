@@ -12,6 +12,8 @@ const init = require('./scripts/init')
 const { NODE_ENV } = process.env
 const loggerMiddleware = expressWinston.logger({ winstonInstance: log })
 
+process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = 0
+
 module.exports = (async () => {
   try {
     const server = express()
